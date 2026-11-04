@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Облачный Кит — Питание</title>
+<style>
+  :root {
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-bg-strong: rgba(255, 255, 255, 0.75);
+    --glass-border: rgba(255, 255, 255, 0.7);
+    --glass-shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+    --text-main: #1a2340;
+    --text-muted: #5a6684;
+    --radius: 22px;
+    --radius-sm: 14px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    height: 100%;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    color: var(--text-main);
+    background: #e8eefc;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+  body::before {
+    content: ""; position: fixed; inset: -20%; z-index: -2;
+    background:
+      radial-gradient(circle at 15% 20%, #a5d8ff 0%, transparent 45%),
+      radial-gradient(circle at 85% 15%, #ffd8a8 0%, transparent 40%),
+      radial-gradient(circle at 20% 85%, #b2f2bb 0%, transparent 45%),
+      radial-gradient(circle at 80% 80%, #eebefa 0%, transparent 45%),
+      linear-gradient(135deg, #f1f3ff 0%, #e3ecff 100%);
+    animation: floatBg 24s ease-in-out infinite alternate;
+  }
+  @keyframes floatBg { 0% { transform: translate(0,0) scale(1); } 100% { transform: translate(2%, -2%) scale(1.05); } }
+  .bubble {
+    position: fixed; border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, rgba(255,255,255,0.9), rgba(255,255,255,0.1));
+    filter: blur(2px); z-index: -1;
+    animation: floatUp 18s ease-in-out infinite; pointer-events: none;
+  }
+  @keyframes floatUp { 0%,100% { transform: translateY(0) scale(1); opacity: 0.5; } 50% { transform: translateY(-40px) scale(1.1); opacity: 0.8; } }
+
+  header.topbar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 32px; margin: 18px 22px 0;
+    background: var(--glass-bg-strong);
+    backdrop-filter: blur(24px) saturate(180%);
+    -webkit-backdrop-filter: blur(24px) saturate(180%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius); box-shadow: var(--glass-shadow);
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand .logo {
+    width: 54px; height: 54px; border-radius: 50%;
+    background: linear-gradient(135deg, #4dabf7, #cc5de8);
+    display: grid; place-items: center; font-size: 28px;
+    box-shadow: 0 6px 18px rgba(77,171,247,0.4);
+  }
+  .brand h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.3px; }
+  .brand p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .clock { text-align: right; }
+  .clock .time {
+    font-size: 34px; font-weight: 800; letter-spacing: -1px;
+    background: linear-gradient(135deg, #4dabf7, #cc5de8);
+    -webkit-background-clip: text; background-clip: text;
+    -webkit-text-fill-color: transparent; font-variant-numeric: tabular-nums;
+  }
+  .clock .date { font-size: 14px; color: var(--text-muted); margin-top: 2px; }
+  .clock .season {
+    display: inline-block; margin-top: 4px; font-size: 11px;
+    padding: 3px 10px; border-radius: 999px;
+    background: rgba(77,171,247,0.15); color: #1864ab; font-weight: 600;
+  }
+  .sync-status {
+    display: inline-block; margin-top: 4px; margin-left: 6px; font-size: 11px;
+    padding: 3px 10px; border-radius: 999px; font-weight: 600;
+    background: rgba(16,185,129,0.15); color: #087f5b;
+  }
+  .sync-status.loading { background: rgba(245,158,11,0.15); color: #997404; }
+  .sync-status.err { background: rgba(239,68,68,0.15); color: #c92a2a; }
+
+  .dashboard {
+    display: flex; flex-direction: column;
+    gap: 18px;
+    padding: 18px 22px 26px; 
+    height: calc(100vh - 110px);
+  }
+  
+  /* Секция со сводкой (фиксированная) */
+  .widget-summary {
+    flex-shrink: 0;
+    background: var(--glass-bg);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius); box-shadow: var(--glass-shadow);
+    padding: 20px 22px;
+  }
+  
+  .widget-summary h2 {
+    font-size: 15px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1.2px;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+  }
+  .widget-summary h2 .icon { font-size: 20px; }
+
+  .summary {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px;
+  }
+  .sum-card {
+    padding: 16px 18px; border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.55));
+    border: 1px solid rgba(255,255,255,0.7);
+    box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    position: relative; overflow: hidden;
+  }
+  .sum-card::before {
+    content: ""; position: absolute; top: 0; left: 0; width: 5px; height: 100%;
+    background: linear-gradient(180deg, #4dabf7, #cc5de8);
+  }
+  .sum-card.green::before  { background: linear-gradient(180deg, #51cf66, #94d82d); }
+  .sum-card.orange::before { background: linear-gradient(180deg, #ff922b, #ffd43b); }
+  .sum-card.red::before    { background: linear-gradient(180deg, #ff6b6b, #f06595); }
+  .sum-card .sc-label { font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+  .sum-card .sc-value { font-size: 30px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums; line-height: 1.1; }
+  .sum-card .sc-sub { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-weight: 600; }
+
+  /* Секция с группами (скроллируемая) */
+  .widget-groups {
+    flex-grow: 1;
+    display: flex; flex-direction: column;
+    background: var(--glass-bg);
+    backdrop-filter: blur(22px) saturate(160%);
+    -webkit-backdrop-filter: blur(22px) saturate(160%);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius); box-shadow: var(--glass-shadow);
+    padding: 20px 22px;
+    overflow: hidden;
+  }
+  
+  .widget-groups h2 {
+    font-size: 15px; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 1.2px;
+    display: flex; align-items: center; gap: 8px; margin-bottom: 14px;
+    flex-shrink: 0;
+  }
+  .widget-groups h2 .icon { font-size: 20px; }
+
+  .groups-scroll-container {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding-right: 8px; /* Место под скроллбар */
+    margin-right: -8px;
+  }
+  
+  /* Стилизация скроллбара */
+  .groups-scroll-container::-webkit-scrollbar { width: 6px; }
+  .groups-scroll-container::-webkit-scrollbar-track { background: rgba(0,0,0,0.03); border-radius: 3px; }
+  .groups-scroll-container::-webkit-scrollbar-thumb { background: rgba(77,171,247,0.5); border-radius: 3px; }
+  .groups-scroll-container::-webkit-scrollbar-thumb:hover { background: rgba(77,171,247,0.8); }
+
+  .groups-grid { 
+    display: grid; 
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+    gap: 14px; 
+    padding-bottom: 10px; /* Отступ снизу при прокрутке */
+  }
+  
+  .group-card {
+    background: linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6));
+    border-radius: var(--radius-sm); padding: 14px 16px;
+    border-left: 5px solid #4dabf7; box-shadow: 0 4px 14px rgba(0,0,0,0.05);
+    transition: all .3s ease;
+  }
+  .group-card:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.08); }
+  .group-card .g-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .group-card .g-name { font-size: 14px; font-weight: 700; line-height: 1.3; color: var(--text-main); }
+  .group-card .g-numbers { display: flex; align-items: baseline; gap: 6px; margin-bottom: 10px; }
+  .group-card .g-present {
+    font-size: 26px; font-weight: 800; letter-spacing: -1px; font-variant-numeric: tabular-nums;
+    background: linear-gradient(135deg, #4dabf7, #cc5de8);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .group-card .g-total { font-size: 16px; font-weight: 700; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .group-card .g-abs { margin-left: auto; font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; background: rgba(255,107,107,0.15); color: #c92a2a; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .group-card .g-abs.zero { background: rgba(81,207,102,0.18); color: #2b8a3e; }
+  .group-card .g-abs.gray { background: rgba(0,0,0,0.06); color: var(--text-muted); }
+  .g-progress { height: 8px; border-radius: 5px; overflow: hidden; background: rgba(0,0,0,0.06); margin-bottom: 8px; }
+  .g-progress > div { height: 100%; border-radius: 5px; background: #4dabf7; transition: width .8s ease; }
+  .g-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); font-weight: 600; }
+
+  .waiting { display: grid; place-items: center; text-align: center; color: var(--text-muted); font-size: 16px; font-weight: 600; padding: 30px 10px; }
+  .waiting .big { font-size: 46px; margin-bottom: 12px; }
+
+  .day-off {
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 40px 20px; text-align: center; color: var(--text-main);
+    background: linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.4));
+    border-radius: var(--radius-sm); margin-bottom: 14px; border: 1px dashed rgba(255,255,255,0.9);
+    flex-grow: 1;
+  }
+  .day-off .emoji { font-size: 64px; margin-bottom: 16px; animation: floatUp 4s ease-in-out infinite; }
+  .day-off h3 { font-size: 20px; font-weight: 800; margin-bottom: 8px; color: #1a2340; }
+  .day-off p { font-size: 14px; color: var(--text-muted); }
+
+  @media (max-width: 900px) {
+    .summary { grid-template-columns: repeat(2, 1fr); }
+    header.topbar { flex-direction: column; gap: 12px; text-align: center; }
+    .clock { text-align: center; }
+    .dashboard { height: auto; padding-bottom: 20px; }
+    .groups-scroll-container { max-height: 500px; } /* Ограничиваем высоту на мобильных */
+  }
+  .widget { animation: fadeIn 0.8s ease both; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+</style>
+</head>
+<body>
+
+<div class="bubble" style="width:120px;height:120px;top:10%;left:5%;animation-delay:0s;"></div>
+<div class="bubble" style="width:80px;height:80px;top:60%;left:90%;animation-delay:4s;"></div>
+<div class="bubble" style="width:150px;height:150px;top:75%;left:15%;animation-delay:8s;"></div>
+<div class="bubble" style="width:60px;height:60px;top:25%;left:80%;animation-delay:2s;"></div>
+
+<header class="topbar">
+  <div class="brand">
+    <div class="logo">🐳</div>
+    <div>
+      <h1>Облачный Кит</h1>
+      <p id="month-title">ДОУ № 2 г. Липецка · Питание</p>
+    </div>
+  </div>
+  <div class="clock">
+    <div class="time" id="clock-time">--:--:--</div>
+    <div class="date" id="clock-date">—</div>
+    <div>
+      <span class="season" id="clock-season">—</span>
+      <span class="sync-status loading" id="sync-status">⏳ загрузка</span>
+    </div>
+  </div>
+</header>
+
+<main class="dashboard">
+  
+  <!-- Блок с общими данными (фиксированный) -->
+  <section class="widget-summary" id="widget-summary">
+    <h2><span class="icon">📊</span> Общие показатели</h2>
+    <div class="summary" id="summary">
+      <div class="sum-card"><div class="sc-label">Поставлено</div><div class="sc-value">—</div><div class="sc-sub">всего детей</div></div>
+      <div class="sum-card green"><div class="sc-label">Присутствует</div><div class="sc-value">—</div><div class="sc-sub">фактически</div></div>
+      <div class="sum-card orange"><div class="sc-label">Отсутствует</div><div class="sc-value">—</div><div class="sc-sub">нет в группе</div></div>
+      <div class="sum-card red"><div class="sc-label">Посещаемость</div><div class="sc-value">—</div><div class="sc-sub">% от поставленных</div></div>
+    </div>
+  </section>
+
+  <!-- Блок с группами (скроллируемый) -->
+  <section class="widget-groups" id="widget-groups">
+    
+    <div id="weekend-notice" style="display: none;" class="day-off">
+      <div class="emoji">😴</div>
+      <h3>Сегодня выходной!</h3>
+      <p>Отдыхаем и набираемся сил. Данные по питанию не передаются.</p>
+    </div>
+
+    <div id="data-container" style="display: flex; flex-direction: column; flex-grow: 1; overflow: hidden;">
+      <h2><span class="icon">🍽️</span> Посещаемость по группам</h2>
+      
+      <div class="groups-scroll-container">
+        <div class="groups-grid" id="groups-grid">
+          <div class="waiting"><div><div class="big">⏳</div>Загрузка данных…</div></div>
+        </div>
+      </div>
+    </div>
+
+  </section>
+</main>
+
+<script>
+const CONFIG = {
+  SHEET_ID: '169lL2wWY0mjMNKjNNMvVkhVFU5w_B4j_VUgllpFA3O4',
+  REFRESH_MS: 30000,
+  GID_IMPORT: '2016439044',
+  GID_ANALITIKA: '290521772',
+  START_ROW_A: 2,
+  COL_A_NAME: 0,
+  COL_B_ENROLLED: 1
+};
+
+const pad = n => (n < 10 ? '0' + n : '' + n);
+let lastSyncTime = null;
+let hasError = false;
+let pitanieData = null;   
+let analyticsData = null; 
+
+function checkIsWeekendOrHoliday() {
+  const today = new Date();
+  const day = today.getDay();
+  if (day === 0 || day === 6) return true;
+  
+  const month = today.getMonth() + 1;
+  const date = today.getDate();
+  if (month === 1 && date >= 1 && date <= 8) return true;
+  if (month === 2 && date === 23) return true;
+  if (month === 3 && date === 8) return true;
+  if (month === 5 && date >= 1 && date <= 2) return true;
+  if (month === 5 && date === 9) return true;
+  if (month === 6 && date === 12) return true;
+  if (month === 11 && date === 4) return true;
+  return false;
+}
+
+function cleanDate(v) {
+  if (v === null || v === undefined || v === '') return null;
+  return String(v).trim().split(' ')[0];
+}
+
+window.pitanieCallbackHandler = function(data) {
+  try {
+    if (data.status === 'error') throw new Error(data.errors?.[0]?.detailed_message || 'Ошибка в листе "Импорт"');
+    
+    const rows = data.table.rows;
+    
+    // 1. Находим самую свежую дату в D, где есть Факт > 0
+    let targetDate = null;
+    for (let i = rows.length - 1; i >= 0; i--) {
+       const r = rows[i] && rows[i].c;
+       if (!r) continue;
+       const dateD = cleanDate(r[3]?.v);
+       const fact = Number(r[4]?.v) || 0;
+       if (dateD && fact > 0) {
+          targetDate = dateD;
+          break;
+       }
+    }
+
+    let totalPost = 0, totalFact = 0;
+    window.groupFacts = {};
+    for(let i=1; i<=14; i++) window.groupFacts[i] = { post: 0, fact: 0 };
+
+    if (targetDate) {
+        // Собираем Факт (E) из D
+        for (let i = 0; i < rows.length; i++) {
+           const r = rows[i] && rows[i].c;
+           if (!r) continue;
+           const dateD = cleanDate(r[3]?.v);
+           if (dateD === targetDate) {
+              const nameStr = String(r[0]?.v || '');
+              const match = nameStr.match(/^(\d+)/);
+              const groupNum = match ? parseInt(match[1], 10) : 0;
+              const fact = Number(r[4]?.v) || 0;
+              if (groupNum >= 1 && groupNum <= 14) {
+                  window.groupFacts[groupNum].fact = fact;
+                  totalFact += fact;
+              }
+           }
+        }
+
+        // Собираем Пост (C) из B
+        for (let i = 0; i < rows.length; i++) {
+           const r = rows[i] && rows[i].c;
+           if (!r) continue;
+           const dateB = cleanDate(r[1]?.v);
+           if (dateB === targetDate) {
+              const nameStr = String(r[0]?.v || '');
+              const match = nameStr.match(/^(\d+)/);
+              const groupNum = match ? parseInt(match[1], 10) : 0;
+              const post = Number(r[2]?.v) || 0;
+              if (groupNum >= 1 && groupNum <= 14) {
+                  window.groupFacts[groupNum].post = post;
+                  totalPost += post;
+              }
+           }
+        }
+    }
+
+    const totalAbsent = Math.max(0, totalPost - totalFact);
+    pitanieData = { post: totalPost, present: totalFact, absent: totalAbsent };
+    renderData();
+  } catch (err) {
+    console.error(err);
+    showError(err.message);
+  }
+};
+
+window.analyticsCallbackHandler = function(data) {
+  try {
+    if (data.status === 'error') throw new Error(data.errors?.[0]?.detailed_message || 'Ошибка в листе "Аналитика"');
+    const rows = data.table.rows;
+    if (rows.length > 0 && rows[0].c && rows[0].c[1] && rows[0].c[1].v) {
+      const monthName = rows[0].c[1].v;
+      document.getElementById('month-title').textContent = `ДОУ № 2 г. Липецка · Питание за ${monthName}`;
+    }
+
+    const groups = [];
+    for (let i = CONFIG.START_ROW_A; i < rows.length; i++) {
+      const r = rows[i] && rows[i].c;
+      if (!r || !r[CONFIG.COL_A_NAME] || !r[CONFIG.COL_A_NAME].v) continue;
+      const name = String(r[CONFIG.COL_A_NAME].v).trim();
+      if (!name) continue;
+      const lower = name.toLowerCase();
+      if (lower.includes('итого') || lower.includes('всего')) continue;
+
+      const enrolled = Number(r[CONFIG.COL_B_ENROLLED]?.v) || 0;
+      const match = name.match(/^(\d+)/);
+      const gNum = match ? parseInt(match[1], 10) : 0;
+      groups.push({ num: gNum, name, enrolled });
+    }
+
+    analyticsData = groups;
+    renderData();
+  } catch (err) {
+    console.error(err);
+    showError(err.message);
+  }
+};
+
+function loadJSONP(gid, handlerName, scriptId) {
+  const oldScript = document.getElementById(scriptId);
+  if (oldScript) oldScript.remove();
+  const script = document.createElement('script');
+  script.id = scriptId;
+  script.src = `https://docs.google.com/spreadsheets/d/${CONFIG.SHEET_ID}/gviz/tq?tqx=out:json;responseHandler:${handlerName}&gid=${gid}&_=${Date.now()}`;
+  script.onerror = () => showError('Ошибка сети или AdBlock');
+  document.body.appendChild(script);
+}
+
+function loadAll() {
+  if (document.hidden) return;
+  setSyncStatus('loading', '⏳ обновление');
+  loadJSONP(CONFIG.GID_IMPORT, 'pitanieCallbackHandler', 'script-pitanie');
+  loadJSONP(CONFIG.GID_ANALITIKA, 'analyticsCallbackHandler', 'script-analytics');
+}
+
+function renderData() {
+  if (!pitanieData || !analyticsData) return;
+  
+  const isWeekend = checkIsWeekendOrHoliday();
+  const weekendNotice = document.getElementById('weekend-notice');
+  const dataContainer = document.getElementById('data-container');
+  
+  if (isWeekend) {
+    weekendNotice.style.display = 'flex';
+    dataContainer.style.display = 'none';
+    hasError = false;
+    lastSyncTime = Date.now();
+    setSyncStatus('ok', '● выходной');
+    return;
+  } else {
+    weekendNotice.style.display = 'none';
+    dataContainer.style.display = 'flex';
+  }
+
+  const grid = document.getElementById('groups-grid');
+  const { post, present, absent } = pitanieData;
+  const totalPct = post ? Math.round((present / post) * 100) : 0;
+  
+  const cards = document.querySelectorAll('.sum-card .sc-value');
+  if (cards.length === 4) {
+    cards[0].textContent = post;
+    cards[1].textContent = present;
+    cards[2].textContent = absent;
+    cards[3].textContent = totalPct + '%';
+  }
+
+  if (!analyticsData.length) {
+    grid.innerHTML = `<div class="waiting"><div><div class="big">📭</div>Группы не найдены</div></div>`;
+    return;
+  }
+
+  grid.innerHTML = analyticsData.map(g => {
+    const enrolled = g.enrolled;
+    const gData = (window.groupFacts && window.groupFacts[g.num]) || { post: 0, fact: 0 };
+    
+    const post = gData.post; 
+    const fact = gData.fact; 
+    
+    let badgeClass = 'g-abs';
+    let badgeText = '';
+    
+    if (post === 0 && fact === 0) {
+        badgeClass = 'g-abs gray';
+        badgeText = 'Нет данных';
+    } else if (post > 0 && fact === post) {
+        badgeClass = 'g-abs zero';
+        badgeText = '✓ ' + fact;
+    } else if (fact > 0) {
+        badgeText = 'Факт: ' + fact;
+    } else {
+        badgeText = '−' + Math.max(0, post - fact);
+    }
+
+    const pct = post > 0 ? Math.round((fact / post) * 100) : 0;
+
+    let color = '#4dabf7';
+    const n = g.name.toLowerCase();
+    if (n.includes('младш')) color = '#51cf66';
+    else if (n.includes('средн')) color = '#ff922b';
+    else if (n.includes('старш')) color = '#cc5de8';
+    else if (n.includes('подготов')) color = '#f06595';
+
+    return `<div class="group-card" style="border-left-color:${color}">
+      <div class="g-head"><div class="g-name">${g.name}</div></div>
+      <div class="g-numbers">
+        <span class="g-present">${post}</span>
+        <span class="g-total">/ ${enrolled}</span>
+        <span class="${badgeClass}">${badgeText}</span>
+      </div>
+      <div class="g-progress"><div style="width:${pct}%"></div></div>
+      <div class="g-meta"><span>Посещаемость</span><span>${pct}%</span></div>
+    </div>`;
+  }).join('');
+
+  hasError = false;
+  lastSyncTime = Date.now();
+  setSyncStatus('ok', '● онлайн');
+}
+
+function showError(msg) {
+  hasError = true;
+  setSyncStatus('err', '✕ ошибка');
+  const grid = document.getElementById('groups-grid');
+  if (grid.querySelector('.waiting')) {
+    grid.innerHTML = `<div class="waiting"><div><div class="big">⚠️</div>${msg}<br></div></div>`;
+  }
+}
+
+function setSyncStatus(cls, txt) {
+  document.getElementById('sync-status').className = 'sync-status ' + cls;
+  document.getElementById('sync-status').textContent = txt;
+}
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('clock-time').textContent = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  const days = ['воскресенье','понедельник','вторник','среда','четверг','пятница','суббота'];
+  const months = ['января','февраля','марта','апреля','мая','июня','июля','августа','сентября','октября','ноября','декабря'];
+  document.getElementById('clock-date').textContent = `${days[now.getDay()]}, ${now.getDate()} ${months[now.getMonth()]} ${now.getFullYear()}`;
+  
+  const d = new Date();
+  const seasons = ['Зима', 'Зима', 'Весна', 'Весна', 'Весна', 'Лето', 'Лето', 'Лето', 'Осень', 'Осень', 'Осень', 'Зима'];
+  document.getElementById('clock-season').textContent = seasons[d.getMonth()] + ' · Учебный режим';
+  
+  if (!hasError && lastSyncTime) {
+    const sec = Math.round((Date.now() - lastSyncTime) / 1000);
+    let ago = sec < 5 ? 'только что' : sec < 60 ? `${sec} сек` : `${Math.floor(sec/60)} мин`;
+    setSyncStatus('ok', `● данные ${ago} назад`);
+  }
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+loadAll();
+setInterval(loadAll, CONFIG.REFRESH_MS);
+</script>
+</body>
+</html>
